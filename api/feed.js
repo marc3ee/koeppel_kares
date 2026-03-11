@@ -234,10 +234,11 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // Cache the response for 10 minutes on Vercel's edge + browser
+  // Cache the response for 1 hour on Vercel's edge, 30 min in browser,
+  // and serve stale content for up to 10 min while revalidating in background
   res.setHeader(
     "Cache-Control",
-    "s-maxage=600, stale-while-revalidate=300"
+    "public, max-age=1800, s-maxage=3600, stale-while-revalidate=600"
   );
 
   try {
