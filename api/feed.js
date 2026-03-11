@@ -8,7 +8,7 @@
  *   GET /api/feed?pretty=1 → pretty-printed JSON
  */
 
-const RSS_URL = "https://www.koeppelautogroup.com/blog/rss/index.xml";
+const RSS_URL = "https://koeppelautogroup.com/blog/rss/index.xml";
 
 // ---------------------------------------------------------------------------
 // Lightweight XML helpers – no external dependencies needed
