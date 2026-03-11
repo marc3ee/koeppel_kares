@@ -55,11 +55,17 @@ function splitItems(xml) {
 function stripHtml(html) {
   if (!html) return "";
   return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
+    // Decode HTML entities first so encoded tags become real tags
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
+    // Remove style and script blocks entirely (including contents)
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    // Remove all remaining HTML tags
+    .replace(/<[^>]+>/g, " ")
+    // Decode remaining entities
     .replace(/&#039;/g, "'")
     .replace(/&#8217;/g, "\u2019")
     .replace(/&#8216;/g, "\u2018")
@@ -70,21 +76,44 @@ function stripHtml(html) {
     .replace(/&nbsp;/g, " ")
     .replace(/&#\d+;/g, "")
     .replace(/&\w+;/g, " ")
+    // Collapse whitespace
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function extractExcerpt(html, maxLength = 200) {
   if (!html) return "";
-  const excerptMatch = html.match(/article-excerpt[^>]*>([\s\S]*?)<\//i);
+
+  // First decode entities so we can work with real HTML
+  var decoded = html
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"');
+
+  // Try to find article-excerpt class content
+  const excerptMatch = decoded.match(/article-excerpt[^>]*>([\s\S]*?)<\//i);
   if (excerptMatch) {
-    const clean = stripHtml(excerptMatch[1]);
+    const clean = excerptMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     if (clean.length > 0) {
       return clean.length > maxLength
         ? clean.substring(0, maxLength - 3) + "..."
         : clean;
     }
   }
+
+  // Try to find first meaningful <p> tag
+  const pTags = decoded.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
+  for (let i = 0; i < pTags.length; i++) {
+    const pText = pTags[i].replace(/<[^>]+>/g, " ").replace(/&\w+;/g, " ").replace(/&#\d+;/g, "").replace(/\s+/g, " ").trim();
+    if (pText.length > 30) {
+      return pText.length > maxLength
+        ? pText.substring(0, maxLength - 3) + "..."
+        : pText;
+    }
+  }
+
+  // Last resort: full strip
   const clean = stripHtml(html);
   return clean.length > maxLength
     ? clean.substring(0, maxLength - 3) + "..."
