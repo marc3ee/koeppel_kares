@@ -74,6 +74,59 @@ function splitItems(xml) {
 }
 
 /**
+ * Strip HTML tags and decode common HTML entities to produce clean plain text.
+ */
+function stripHtml(html) {
+  if (!html) return "";
+  return html
+    // Remove all HTML tags
+    .replace(/<[^>]+>/g, " ")
+    // Decode common HTML entities
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#8217;/g, "\u2019")
+    .replace(/&#8216;/g, "\u2018")
+    .replace(/&#8220;/g, "\u201C")
+    .replace(/&#8221;/g, "\u201D")
+    .replace(/&#8211;/g, "\u2013")
+    .replace(/&#8212;/g, "\u2014")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#\d+;/g, "")
+    .replace(/&\w+;/g, " ")
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Extract a clean excerpt from HTML content.
+ * Tries the article-excerpt element first, then falls back to stripped text.
+ */
+function extractExcerpt(html, maxLength = 200) {
+  if (!html) return "";
+
+  // Try to find article-excerpt class content
+  const excerptMatch = html.match(/article-excerpt[^>]*>([\s\S]*?)<\//i);
+  if (excerptMatch) {
+    const clean = stripHtml(excerptMatch[1]);
+    if (clean.length > 0) {
+      return clean.length > maxLength
+        ? clean.substring(0, maxLength - 3) + "..."
+        : clean;
+    }
+  }
+
+  // Fallback: strip all HTML and take first N characters
+  const clean = stripHtml(html);
+  return clean.length > maxLength
+    ? clean.substring(0, maxLength - 3) + "..."
+    : clean;
+}
+
+/**
  * Parse a single RSS <item> block into a plain object.
  */
 function parseRssItem(block) {
@@ -87,6 +140,9 @@ function parseRssItem(block) {
     author: getTagContent(block, "author") || getTagContent(block, "dc:creator"),
     categories: getAllTagContents(block, "category"),
   };
+
+  // Generate a clean plain-text excerpt
+  item.excerpt = extractExcerpt(item.content || item.description, 200);
 
   // Enclosure (podcast / image attachments)
   const enclosureUrl = getAttr(block, "enclosure", "url");
@@ -187,8 +243,8 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(RSS_URL, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "application/rss+xml, application/xml, text/xml, */*",
+        "User-Agent": "KoeppelRSSConverter/1.0",
+        Accept: "application/rss+xml, application/xml, text/xml",
       },
     });
 
@@ -220,8 +276,6 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: "Internal error while processing the RSS feed",
       message: err.message,
-      cause: err.cause?.message || null,
-      code: err.cause?.code || null,
-  });
-}
+    });
+  }
 }
