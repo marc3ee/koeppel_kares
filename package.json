@@ -1,0 +1,12 @@
+{
+  "name": "koeppel-rss-to-json",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Converts the Koeppel Auto Group blog RSS feed to JSON via a Vercel serverless function.",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
