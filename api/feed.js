@@ -91,10 +91,22 @@ function extractExcerpt(html, maxLength = 200) {
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"');
 
-  // Try to find article-excerpt class content
-  const excerptMatch = decoded.match(/article-excerpt[^>]*>([\s\S]*?)<\//i);
+  // Strip <style> and <script> blocks (including contents) BEFORE searching,
+  // otherwise CSS like ".article-excerpt { ... }" matches as the excerpt.
+  decoded = decoded
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+
+  // Try to find <p class="article-excerpt">...</p> (must be inside a real tag,
+  // not just the bare string "article-excerpt" appearing in CSS or text)
+  const excerptMatch = decoded.match(
+    /<[^>]*class=["'][^"']*article-excerpt[^"']*["'][^>]*>([\s\S]*?)<\//i
+  );
   if (excerptMatch) {
-    const clean = excerptMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const clean = excerptMatch[1]
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     if (clean.length > 0) {
       return clean.length > maxLength
         ? clean.substring(0, maxLength - 3) + "..."
@@ -105,7 +117,12 @@ function extractExcerpt(html, maxLength = 200) {
   // Try to find first meaningful <p> tag
   const pTags = decoded.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
   for (let i = 0; i < pTags.length; i++) {
-    const pText = pTags[i].replace(/<[^>]+>/g, " ").replace(/&\w+;/g, " ").replace(/&#\d+;/g, "").replace(/\s+/g, " ").trim();
+    const pText = pTags[i]
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&\w+;/g, " ")
+      .replace(/&#\d+;/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (pText.length > 30) {
       return pText.length > maxLength
         ? pText.substring(0, maxLength - 3) + "..."
@@ -119,6 +136,7 @@ function extractExcerpt(html, maxLength = 200) {
     ? clean.substring(0, maxLength - 3) + "..."
     : clean;
 }
+
 
 function parseRssItem(block) {
   const item = {
